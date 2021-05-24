@@ -3,8 +3,8 @@
 """
 import treetaggerwrapper
 
-input = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1.txt"
-output_lemmatised = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1_lemmatised.txt"
+input = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\merged_termlist_id_m-n.txt"
+output_lemmatised = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\merged_termlist_id_m-n_lemmatised_TT.txt"
 
 def lemmatise_old(sent, lang):
     lemmatiser = treetaggerwrapper.TreeTagger(TAGLANG=lang)
@@ -32,17 +32,38 @@ def lemmatise(text, lang):
 #  importing list of it-de terms
 with open(input, "r", encoding="utf-8") as inputText:
     textLines = inputText.read().splitlines()
-    textLemma = []
+    '''textLemma = []
     for it_de in textLines:
         lemmas_it = lemmatise((it_de.split("\t")[0]), "it")
         lemmas_de = lemmatise((it_de.split("\t")[1]), "de")
-        textLemma.append("%s\t%s" % (lemmas_it, lemmas_de))
+        textLemma.append("%s\t%s" % (lemmas_it, lemmas_de))'''
+    it_de = []
+    for biterm in textLines:
+        it_de.append(tuple(biterm.split("\t")))  # creating list of tab-separated ID-ItTerms-DeTerms
+    id_terms = {}
+    for (id, termsIt, termsDe) in it_de:
+        termsIt = [lemmatise(x, "it") for x in termsIt.split("|")]
+        termsDe = [lemmatise(x, "de") for x in termsDe.split("|")]
 
-print(textLemma)
+        id_terms[id] = (termsIt, termsDe)
 
-with open(output_lemmatised, "w", encoding="utf-8") as lemmatised:
-    lemmatised.write("\n".join(textLemma))
 
+
+'''with open(output_lemmatised, "w", encoding="utf-8") as lemmatised:
+    lemmatised.write("\n".join(textLemma))'''
+
+export_as_text = []
+for id, (it, de) in id_terms.items():
+    it_terms = []
+    de_terms = []
+    for itterm in it:
+        it_terms.append(itterm)
+    for determ in de:
+        de_terms.append(determ)
+    export_as_text.append("%s\t%s\t%s" % (id, "|".join(it_terms), "|".join(de_terms)))
+
+with open(output_lemmatised, "w", encoding="utf-8") as exp:
+    exp.write("\n".join(export_as_text))
 
 
 
