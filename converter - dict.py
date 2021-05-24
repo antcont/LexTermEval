@@ -57,21 +57,32 @@ for k, v in IT_dict.items():
 
 print(merged_dict)
 
-# now exporting
-export_as_text = []
-for id, (it, de) in merged_dict.items():
-    it_terms = []
-    de_terms = []
-    for itterm in it:
-        it_terms.append(itterm)
-    for determ in de:
-        de_terms.append(determ)
-    export_as_text.append("%s\t%s\t%s" % (id, "|".join(it_terms), "|".join(de_terms)))
+def tb_dict2string(terms_dict):
+    '''
+    Converting termbase from dictionary to string format, for export purposes
 
-#print("\n".join(export_as_text))
+    terms_dict: a dictionary with key = concept_IDs and value a tuple of two lists with Italian terms and German terms each
+    {'6979': (['indennità di espropriazione', 'indennità di esproprio', 'indennizzo'], ['Enteignungsentschädigung',
+    'Entschädigung']), …}
+
+    returns: a list of strings in the following format:
+    id(TABSEPARATOR)italianTerm(PIPESEPARATOR)italianTerm(TABSEPARATOR)germanTerm(PIPESEPARATOR)germanTerm...
+    '''
+    export_as_text = []
+    for id, (it, de) in terms_dict.items():
+        it_terms = []
+        de_terms = []
+        for itterm in it:
+            it_terms.append(itterm)
+        for determ in de:
+            de_terms.append(determ)
+        export_as_text.append("%s\t%s\t%s" % (id, "|".join(it_terms), "|".join(de_terms)))
+    return export_as_text
+
+tb_string = tb_dict2string(merged_dict)
 
 with open(r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\merged_termlist_id_m-n.txt", "w", encoding="utf-8") as exp:
-    exp.write("\n".join(export_as_text))
+    exp.write("\n".join(tb_string))
 
 
 
