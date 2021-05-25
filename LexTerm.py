@@ -1,4 +1,7 @@
 """
+todo: trying to implement first evaluation on an (old) hypothesis, with hard-copying, terms annotation and
+ correct/wrong annotation
+
 
 Included lemmatisation of split compound terms (MUCH SLOWER; it allows to match 316 terms (vs. 305))
 TODO: (only for final tests) re-add lemmatisation of compound words for evaluation
@@ -13,13 +16,16 @@ import treetaggerwrapper
 from Levenshtein import distance  # needed for coupling matched term - term in full termbase.
     # compute it for each German term in the termbase ->   edit_distance = distance(matched_term, termbase term)
     # then sort it from the lowest Levenshtein edit distance and pick the one with the lowest score
+import operator
+import csv
 
 from collections import Counter
 
 
 #  termList is in the following format: id(TABSEPARATOR)italianTerm(PIPESEPARATOR)italianTerm(TABSEPARATOR)germanTerm...
 termList = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\merged_termlist_id_m-n_lemmatised_TT.txt"
-testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized.txt"
+testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+base+base_lemma.txt"
+output = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+base+base_lemma._EXPERIMENT1.1.txt"
 
 
 def lemmatise(text, lang):
@@ -38,17 +44,6 @@ def lemmatise(text, lang):
             continue
     return " ".join(lemma_list)
 
-
-print("Loading data...")
-with open(termList, "r", encoding="utf-8") as termlist:
-    terms = termlist.read().splitlines()
-
-with open(testSet, "r", encoding="utf-8") as testset:
-    test = testset.read().splitlines()
-
-test_ = []
-for test_ref in test:
-    test_.append(tuple(test_ref.split("\t")))  #  list of tuples tuple -> (id, src, ref, src_lemma, ref_lemma)
 
 def tb_string2dict(termList):
     '''
@@ -70,6 +65,20 @@ def tb_string2dict(termList):
         #print()
     return id_terms
 
+
+print("Loading data...")
+with open(termList, "r", encoding="utf-8") as termlist:
+    terms = termlist.read().splitlines()
+
+with open(testSet, "r", encoding="utf-8") as testset:
+    test = testset.read().splitlines()
+
+test_ = []
+for test_ref in test:
+    test_.append(tuple(test_ref.split("\t")))  #  list of tuples tuple -> (id, src, ref, src_lemma, ref_lemma)
+
+
+
 #  loading Spacy models and instantiating the PhraseMatchers for each language
 print("Loading SpaCy...\n")
 nlp_de = spacy.load("de_core_news_lg")
@@ -83,13 +92,18 @@ counter = 0                 # total matched terms
 identified_terms = []
 matched_after_split = []    # for testing purposes: see which additional matches have been found after compound-split
 
+# a list of tuples (sentenceID, src, ref, hyp, src_l, ref_l, hyp_l, conceptID, terminology_entry, src_term, hyp_term, C/W)
+annotated_data = []
+counter_correct = 0
+counter_wrong = 0
+
 #  adding all Italian terms to matcher_it
 id_terms = tb_string2dict(terms)
 for id, (it, de) in id_terms.items():
     pattern_it = [nlp_it.make_doc(term) for term in it]  # converting Str to Doc (needed by PhraseMatcher)
     matcher_it.add(str(id), pattern_it)   # adding Italian terms to PhraseMatcher, with concept ID
 
-for (id, src, ref, src_lemma, ref_lemma) in test_:
+for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:
     print("Next sentence pair...")
     doc_it = nlp_it.make_doc(src_lemma)
     doc_it_or = nlp_it.make_doc(src)
@@ -128,14 +142,14 @@ for (id, src, ref, src_lemma, ref_lemma) in test_:
             split_text = []            # the new sentence that will be searched for matches after compound splitting
             for token in doc_de:
                 split_token = splitter.split_compound(token.text)  # output is a list of tuples (score, word, word)
-                hyp = split_token[0]        # considering only the first splitting hypothesis
-                if hyp[0] > 0.9:                # tweak threshold; over 0.9 seems legit
+                hyp_split = split_token[0]        # considering only the first splitting hypothesis
+                if hyp_split[0] > 0.7:                # tweak threshold; over 0.9 seems legit
                     # TODO: remember to lemmatise compounds when doing official tests (much slower)
-                    #split_text.append(lemmatise(hyp[1], "de"))  # lemmatising and appending first word of compound
-                    #split_text.append(lemmatise(hyp[2], "de"))  # lemmatising and appending second element of compound
-                    split_text.append(hyp[1])  # appending first word of compound (faster, no lemmatisation)
-                    split_text.append(hyp[2])  # appending second element of compound (faster, no lemmatisation)
-                    print("Compound has been split: ", hyp)
+                    #split_text.append(lemmatise(hyp_split[1], "de"))  # lemmatising and appending first word of compound
+                    #split_text.append(lemmatise(hyp_split[2], "de"))  # lemmatising and appending second element of compound
+                    split_text.append(hyp_split[1])  # appending first word of compound (faster, no lemmatisation)
+                    split_text.append(hyp_split[2])  # appending second element of compound (faster, no lemmatisation)
+                    print("Compound has been split: ", hyp_split)
                 else:  # if score is under threshold, i.e., word is not a compound, append original unsplit token
                     split_text.append(token.text)
             split_text = " ".join(split_text)             # sentence as string
@@ -144,7 +158,6 @@ for (id, src, ref, src_lemma, ref_lemma) in test_:
             #  reconvert Str to Doc for PhraseMatcher
             doc_de = nlp_de.make_doc(split_text)   # overwriting the original Doc
             doc_de_or = nlp_de.make_doc(split_text)
-
 
             # now retrying to match on sentence with split compounds
             matches_de = matcher_de(doc_de, as_spans=True)           # checking if DE term matches in DE sentence
@@ -171,9 +184,7 @@ for (id, src, ref, src_lemma, ref_lemma) in test_:
             match_id = span.label
             print("[MATCH] German equivalent found in reference.")
             concept_id = nlp_it.vocab.strings[match_id]     # getting the concept ID
-            # ...
-            # HARD-COPY ROW, DO STUFF, ANNOTATE, ETC ETC
-            # ...
+
             matched_term_de = doc_de[start:end]             # get the matched term by slicing the doc
             matched_term_de_or = doc_de_or[start:end]
             print(matched_term_de, "\t", matched_term_de_or)
@@ -183,8 +194,74 @@ for (id, src, ref, src_lemma, ref_lemma) in test_:
             print(src, "\n", ref, "\n")
             counter += 1
 
-            ''' except Exception as exc:
-            print(exc.message)'''
+            # now checking for matches in the hypothesis sentence
+            doc_hyp = nlp_de.make_doc(hyp_lemma)
+            doc_hyp_or = nlp_de.make_doc(hyp)
+            matches_de = matcher_de(doc_hyp, as_spans=True)  # checking if DE term matches in DE sentence
+            matches_de = filter_spans(matches_de)  # filtering overlapping matches (greedy)
+
+            if not matches_de:  # if no match is found in the German reference sentence, I retry after splitting compounds
+                splitter = Splitter()
+                split_text = []  # the new sentence that will be searched for matches after compound splitting
+                for token in doc_hyp:
+                    split_token = splitter.split_compound(token.text)  # output is a list of tuples (score, word, word)
+                    hyp_split = split_token[0]  # considering only the first splitting hypothesis
+                    if hyp_split[0] > 0.7:  # tweak threshold; over 0.9 seems legit
+                        # TODO: remember to lemmatise compounds when doing official tests (much slower)
+                        #split_text.append(lemmatise(hyp_split[1], "de"))  # lemmatising and appending first word of compound
+                        #split_text.append(lemmatise(hyp_split[2], "de"))  # lemmatising and appending second element of compound
+                        split_text.append(hyp_split[1])  # appending first word of compound (faster, no lemmatisation)
+                        split_text.append(hyp_split[2])  # appending second element of compound (faster, no lemmatisation)
+                        print("Compound has been split: ", hyp_split)
+                    else:  # if score is under threshold, i.e., word is not a compound, append original unsplit token
+                        split_text.append(token.text)
+                split_text = " ".join(split_text)  # sentence as string
+                print(split_text)
+
+                #  reconvert Str to Doc for PhraseMatcher
+                doc_hyp = nlp_de.make_doc(split_text)  # overwriting the original Doc
+                doc_hyp_or = nlp_de.make_doc(split_text)
+
+                # now retrying to match on sentence with split compounds
+                matches_de = matcher_de(doc_hyp, as_spans=True)  # checking if DE term matches in DE sentence
+                matches_de = filter_spans(matches_de)  # filtering overlapping matches (greedy)
+
+                if not matches_de:
+                    # if still no matches... append to annotated data as wrong/omitted term
+                    # (sentenceID, src, ref, hyp, src_l, ref_l, hyp_l, conceptID, terminology_entry, src_term, hyp_term, C/W)
+                    counter_wrong += 1
+                    annotated_tuple = (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id,
+                                       id_terms[concept_id], matched_term_it, "NA", "W")
+                                        # "NA" because no term was found in hypothesis
+                    annotated_data.append(annotated_tuple)
+                    # here matches_de is either the match from the first search or the match after the compound splitting
+
+            for span in matches_de:  # iterating over each single term match on the sentence
+                counter_correct += 1
+                start = span.start
+                end = span.end
+                match_id = span.label
+                print("[MATCH] German equivalent found in hypothesis.")
+                concept_id = nlp_it.vocab.strings[match_id]  # getting the concept ID
+
+                matched_term_de = doc_hyp[start:end]  # get the matched term by slicing the doc
+                matched_term_de_or = doc_hyp_or[start:end]
+
+                # which term has been matched? compute Levenshtein edit distance to pair them up
+                lev_dist = []
+                for deTerm in De:
+                    edit_distance = distance(str(matched_term_de_or), deTerm)  # todo: move conversion to string up?
+                    lev_dist.append((edit_distance, deTerm))
+                # sorting by lowest Levenshtein distance
+                lev_dist.sort(key=operator.itemgetter(0))
+                match_ = lev_dist[0]        # first tuple, lowest Levenshtein distance
+                match = match_[1]           # matched term
+
+
+                annotated_tuple = (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id,
+                                   id_terms[concept_id], matched_term_it, matched_term_de_or, "C")
+                # "NA" because no term was found in hypothesis
+                annotated_data.append(annotated_tuple)
 
         matcher_de.remove(concept_id)  # cleaning up German matcher for next iterations
 
@@ -198,14 +275,21 @@ for ((ITTERMS, DETERMS), ITSENT, DESENT) in matched_after_split:
     print(DESENT)
     print()
 
-print(counter)
 
 
+print("Evaluated terms: ", counter)
+print("Correct terms: ", counter_correct)
+print("Wrong/omitted terms: ", counter_wrong)
+print("LexTermEval score: ", (counter_correct/counter)*100)
 
+#  exporting as TSV file
+with open(output, "w", encoding="utf-8") as out:
+    tsv_writer = csv.writer(out, delimiter='\t', lineterminator='\n')
+    tsv_writer.writerow(["sentenceID", "source", "reference", "hypothesis", "source_lemmatised", "reference_lemmatised",
+                         "hypothesis_lemmatised", "conceptID", "terms", "matched_term_source",
+                         "matched_term_hypothesis", "C/W"])
+    for (a, b, c, d, e, f, g, h, i, j, k, l) in annotated_data:
+        tsv_writer.writerow([a, b, c, d, e, f, g, h, i, j, k, l])
 
-
-
-
-
-
+print("Done.")
 
