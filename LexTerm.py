@@ -1,43 +1,7 @@
 """
-TODO: risolvere problema annotazione (v. output)... prima non c'era! Devo aver modificato qualcosa per sbaglio nelle
- ultime 2 ore
- - alcuni match poi non si riferiscono al termine italiano trovato ma alla entry del match precedente... com'è possibile
-   es. ha cercato Landesgesetz, poi il termine italiano successivo è "essere",  e lui cerca in reference non il
-   corrispondente di "essere", bensì Landesgesetz... perché???
+LexTerm
 
-TODO: create function for compound_splitting
-
-TODO: possible reasons for duplicate rows and how to solve them
-sentence 1: it contains 2 times "Artikel" and there are 8 total identical rows... why? should be 2
-per evitare la doppia annotazione di un termine che compare due volte, devo impedire che alla prima iterazione lui trovi
-due matches, devo limitarlo in qualche modo a uno, non so come... devo limitarlo anche nella ricerca di corrispondenti
-in reference, e poi in hypothesis... forse posso instanziare un True/False e usare un while loop
-
-- TODO: add limitation to 1-1 match (avoid 1-2 matches for sentences with more than one term from the same concept,
-   or the same term repeated)
-
-
-
-se uso la strategia del matches_de[0] potrebbe essere un problema; perché la prima volta becca il primo termine
-all'interno della frase, ma se c'è un termine due volte, alla seconda volta non beccherà il secondo termine, ma di nuovo
-il primo! come risolvo questa cosa? La risolvo così:
-- annotare posizione termine annotato (ma dove, come?)
-- inserire il matches_de[0] in un try-else o in un if/else: se c'è solo un match, okay. se ci sono più di un match,
-  controllare se il match precedentemente considerato (considera sia id_frase che start-end) coincide con il primo.
-  se non coincide, andare avanti; altrimenti, considerare il secondo match; altrimenti, il terzo match.
-- una volta implementato tutto ciò, devo stare attento a se effettivamente il numero di righe nell'annotazione finale
-  coincide fra i diversi test con diversi hypothesis
-- rimane scoperto il caso in cui il secondo termine venga trovato solo dopo compound splitting e il primo no? perché
-  non coinciderebbe più lo span
-
-
-TODO: devo assicurarmi che per ogni match_it venga annotato solo un match_de, oltre a controllare che lo stesso
- non sia stato gia annotato. a sto punto devo veramente valutare se usare una strategia tipo match[0] etc.
-
-Included lemmatisation of split compound terms (MUCH SLOWER; it allows to match 316 terms (vs. 305))
-TODO: (only for final tests) re-add lemmatisation of compound words for evaluation
-todo: when making CLI, insert argument for lemmatisation of compound words (it slows down the process heavily)
-
+Fine-grained automatic evaluation of legal terminology in MT output
 """
 from spacy import load as spacy_load
 from spacy.lang.it import Italian
@@ -56,22 +20,21 @@ import pickle
 
 #  (temporary) filepaths before adopting CLI
 termListMatchRef = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_m_lemmatised.pkl"  # termlist with AA lemmatised terms only, for matching purposes
-termListMatchHyp = r""      # TODO: lemmatise
+termListMatchHyp = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full_lemmatised.pkl"
 termListEval = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full.pkl"  # full termbase with all variants and tags
 testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+base+base_lemma.txt"
 output = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+hyp3+hyp3_lemma.EXPERIMENT_09.06.2021_with reference.txt"
 
 
-#  instantiating compound splitter
+#  instantiating compound splitter and TreeTagger
 splitter = Splitter()
+tagger = treetaggerwrapper.TreeTagger(TAGLANG="de")
 
 
-
-def lemmatise(text, lang):
+def lemmatise(text):
     '''
     TreeTagger lemmatisation (applied to German compounds after splitting)
     '''
-    tagger = treetaggerwrapper.TreeTagger(TAGLANG=lang)
     tags = tagger.tag_text(text)
     mytags = treetaggerwrapper.make_tags(tags)
     lemma_list = []
@@ -128,8 +91,8 @@ def split_compounds(sent, thr, lemma=True):
         # (i.e., the one with highest score)
         if hyp_split[0] > thr:
             if lemma:
-                split_text.append(lemmatise(hyp_split[1], "de"))  # lemmatising and appending first word of compound
-                split_text.append(lemmatise(hyp_split[2], "de"))  # lemmatising and appending second element of compound
+                split_text.append(lemmatise(hyp_split[1]))  # lemmatising and appending first word of compound
+                split_text.append(lemmatise(hyp_split[2]))  # lemmatising and appending second element of compound
             else:  # if lemma == False
                 split_text.append(hyp_split[1])  # appending first word of compound (faster, no lemmatisation)
                 split_text.append(hyp_split[2])  # appending second element of compound (faster, no lemmatisation)
@@ -148,6 +111,9 @@ print("Loading data...")
 
 with open(termListMatchRef, "rb") as termlistmatch:
     id_terms = pickle.load(termlistmatch)  # {id:([termsIT], [termsAA])}
+
+with open(termListMatchHyp, "rb") as termlistmatch_full:
+    id_terms_full = pickle.load(termlistmatch_full)  # {id:([termsIT], [termsAA|DE|AT...])}
 
 with open(termListEval, "rb") as termlisteval:
     referenceTB = pickle.load(termlisteval)  # in the following format...
@@ -243,7 +209,7 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         matches_de = filter_spans(matches_de)  # filtering overlapping matches (greedy)
 
         if not matches_de:  # if no match is found in the German reference sentence, I retry after splitting compounds
-            doc_de = split_compounds(doc_de, 0.6, False) # splitting compounds and overwriting existing non-split doc_de
+            doc_de = split_compounds(doc_de, 0.6, True) # splitting compounds and overwriting existing non-split doc_de
 
             # TODO: CHECK THE FOLLOWING: by doing so, I am overwriting the actual original non-lemmatised DE sentence,
             #  and, as a consequence, I am not annotating the actual term from the original sentence, but the lemmatised
@@ -322,10 +288,11 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         # --> "Process finished with exit code -1073741819 (0xC0000005)"
         # probably due to a bug in SpaCy, very similar to this https://github.com/explosion/spaCy/issues/6148
 
-        #  getting DE terms from the reference TB (containing all terms, not only South Tyrol)
-        itTerms, deTerms = referenceTB[concept_id]  # getting entry through concept ID
+
+        #  getting DE terms from the full lemmatised reference TB (containing all terms, not only South Tyrol)
+        itTerms, deTerms = id_terms_full[concept_id]  # getting entry through concept ID
         # getting German terms to be added to the PhraseMatcher and converting to Doc
-        terms_matcher = [nlp_de.make_doc(term) for term, tags in deTerms.items()]
+        terms_matcher = [nlp_de.make_doc(term) for term in deTerms]
         matcher_de.add(concept_id, terms_matcher)  # adding all German term(s) to the German PhraseMatcher (full TB)
 
         doc_hyp = nlp_de.make_doc(hyp_lemma)  # Str to Doc
@@ -335,7 +302,7 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
 
         if not matches_de:
             # if no match is found in the German sentence, I retry after splitting compounds
-            doc_de = split_compounds(doc_de, 0.6, False) # splitting compounds and overwriting existing non-split doc_de
+            doc_de = split_compounds(doc_de, 0.6, True) # splitting compounds and overwriting existing non-split doc_de
             doc_de_or = doc_de
 
             # now retrying to match on German hypothesis sentence with split compounds
@@ -419,7 +386,7 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         CW = "C"
 
         #  assigning W tag (wrong) to terms with NST-S and NST-N status tags
-        if "NST" in status_de:
+        if "NST" in tag:
             CW = "W"
 
         #  removed, as ANS_C is no more annotated; ANS tag is already there
@@ -484,6 +451,13 @@ annotated_data.sort(key=lambda x: x[0])
 total = len(annotated_data)
 counter_correct = 0
 counter_wrong = 0
+counter_NEO = 0
+counter_NST_S = 0
+counter_NST_NS = 0
+counter_OLD = 0
+counter_CS = 0
+counter_CNS = 0
+counter_ANS = 0
 
 for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id, concept_terms,
      matched_term_it, matched_term_de_or, CW, spr, tag) in annotated_data:
@@ -491,6 +465,22 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id, concept_ter
         counter_wrong += 1
     elif CW == "C":
         counter_correct += 1
+    if tag == "NEO":
+        counter_NEO += 1
+    elif tag == "NST-S":
+        counter_NST_S += 1
+    elif tag == "NST-NS":
+        counter_NST_NS += 1
+    elif tag == "OLD":
+        counter_OLD += 1
+    elif tag == "CS":
+        counter_CS += 1
+    elif tag == "CNS":
+        counter_CNS += 1
+    elif tag == "ANS":
+        counter_ANS += 1
+
+
 
 #  adding id to each row
 final = []
@@ -499,10 +489,24 @@ for (a, b, c, d, e, f, g, h, i, j, k, l, m, n) in annotated_data:
     final.append((idEval, a, b, c, d, e, f, g, h, i, j, k, l, m, n))
     idEval += 1
 
+print()
+print("===============================================================================================================")
 print("Evaluated terms: ", total)
+print("_______________________________________________________________________________________________________________")
 print("Correct terms: ", counter_correct)
+print("\tCorrect standardised/recommended terms: ", counter_CS)
+print("\tCorrect non-standardised/non-recommended terms: ", counter_CNS)
+print("\tAcceptable variant terms given a standardised/recommended term: ", counter_ANS)
+print("_______________________________________________________________________________________________________________")
 print("Wrong/omitted terms: ", counter_wrong)
+print("\tNon-equivalent/omitted terms: ", counter_NEO)
+print("\tNon-South-Tyrol-specific terms (given a standardised or recommended term): ", counter_NST_S)
+print("\tNon-South-Tyrol-specific terms (without a standardised or recommended term): ", counter_NST_NS)
+print("\tOutdated terms: ", counter_OLD)
+print("_______________________________________________________________________________________________________________")
 print("LexTermEval score: ", (counter_correct / total) * 100)
+print("===============================================================================================================")
+
 
 #  exporting as TSV file
 with open(output, "w", encoding="utf-8") as out:
@@ -514,4 +518,3 @@ with open(output, "w", encoding="utf-8") as out:
     for (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) in final:
         tsv_writer.writerow([a, b, c, d, e, f, g, h, i, j, k, l, m, n, o])
 
-print("Done.")
