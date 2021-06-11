@@ -25,17 +25,29 @@ import pickle
 
 termbaseExport = r"C:\Users\anton\Documents\Documenti importanti\Eurac\tirocinio avanzato per tesi 2021\esporti Bluterm\esporto_Bistro_da_Bistrolocale13k.xml"
 
+blacklist = (   # set of IDs of terms to not be added to final termbase
+    "14678",  # Sinn = senso
+)
+
+
 tree = etree.parse(termbaseExport)                 # parsing the XML file
 root = tree.getroot()
 body = root.find("mtf")
 
 #  building termbase data structure
 termBase = {}
+#termBase_test = {}   # todo: remove after testing
+
+#  counters for stats about the tb used for evaluation
 counter_noAA = 0
+counter_standardised_AA = 0
+
 
 for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept in the TB
     ID = conceptGrp.find("concept").text           # getting concept ID from the <concept> child element
     #print(ID)
+    if ID in blacklist:
+        continue      # discarding blacklisted terms
     languageGrp = conceptGrp.findall("languageGrp")
     languageGrpIT = languageGrp[0]      # the first language is Italian
     languageGrpDE = languageGrp[1]      # the second is German
@@ -43,6 +55,8 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
     for termGrp in languageGrpIT.findall("termGrp"):       # iterating over Italian terms in entry
         termIT = termGrp.find('term')
         termIT_text = termIT.text                 # getting the IT term
+        if len(termIT_text) == 1:
+            continue                    # removing terms composed by only one letter (ex. "e" in 27507)
         statusTermine = "NA"
         statusBistroITA = "NA"
         termFields = termGrp.findall("descripGrp")
@@ -57,7 +71,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
                 pass
 
         termIT_dict[termIT_text] = (statusTermine, statusBistroITA)
-        
+
     termDE_dict = {}
     for termGrp in languageGrpDE.findall("termGrp"):
         termDE = termGrp.find('term')
@@ -84,6 +98,8 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
             except:
                 pass
 
+        if termStatus == "Südtirol genormt":
+            counter_standardised_AA += 1
         termDE_dict[termDE_text] = (sprachgebrauch, termStatus, statusBistroDEU)
 
     termDE_dict_new = {}
@@ -96,7 +112,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
             if "Südtirol" in spr and deStatus == "Südtirol genormt":           # South Tyrol standardised terms
                 deStatus = "CS"                                     # overwrite "Südtirol genormt" with CS tag
             elif "Südtirol" in spr and deStatus == "NA":           # South Tyrol variants of standardised terms
-                deStatus = "ANS_C"                                  # assign ANS_C tag
+                deStatus = "ANS"                                    # assign ANS tag
             elif "Südtirol" not in spr:                            # terms from other legal systems
                 deStatus = "NST-S"                                  # assing NST-S tag
             termDE_dict_new[de_term] = (spr, deStatus, deStatusBistro)
@@ -110,7 +126,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
                 deStatus = "NST-S"                                  # assign NST-S tag
             termDE_dict_new[de_term] = (spr, deStatus, deStatusBistro)
     else:
-        # handling entries with no standardised/recommended terms;
+        # handling entries with NO standardised/recommended terms;
         # also translation proposals (Übersetzungsvorschlag) fall in this group
         for de_term, (spr, deStatus, deStatusBistro) in termDE_dict.items():
             if "Südtirol" in spr and deStatus == "NA":         # South Tyrol terms
@@ -118,8 +134,25 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
             elif "Südtirol" not in spr:                        # terms from other legal systems
                 deStatus = "NST-NS"                                 # assign NST-NS tag
             termDE_dict_new[de_term] = (spr, deStatus, deStatusBistro)
+    """
+    termIT_dict_new = {}
+    # adding missing tags to Italian standardised terms :
+    # (RaN: in all or almost all entries with only one Italian standardised term, the term does not carry
+    # the "normato Alto Adige" tag. On the contrary, in entries with more than one Italian term, the standardised term
+    # is disambiguated and already tagged properly).
+    DE_standardised = False
+    for it_term, (itStatus, itStatusBistro) in termIT_dict.items():  # iterating over Italian terms
+        for de_term, (spr, deStatus, deStatusBistro) in termDE_dict.items():
+            if deStatus == "Südtirol genormt":
+                DE_standardised = True
+        if DE_standardised and len(termIT_dict) == 1:   # if only one Italian term (with probably no standardised tag)
+            itStatus = "normato Alto Adige"         # assign missing tag
+        if itStatus == "normato Alto Adige":
+            counter_standardised_IT_modified += 1
+        termIT_dict_new[it_term] = (itStatus, itStatusBistro)
+    """
 
-    # check len differences between old and modified dict
+    # defensive: check len differences between old and modified dict
     if len(termDE_dict) != len(termDE_dict_new):
         print("Different lengths... ")
         print(termDE_dict)
@@ -136,8 +169,27 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
         #print(ID)       # printing ID to check
         continue    # discarding
 
-
     termBase[ID] = (termIT_dict, termDE_dict_new)       # adding entry to the final termbase dictionary
+    #termBase_test[ID] = (termIT_dict, termDE_dict)  todo: for testing purposes
+
+
+
+'''# todo: remove after testing
+#  checking which entries have a mismatch btw IT standardised tags and AA standardised tags
+for ID, (termIT_dict_new, termDE_dict) in termBase_test.items():
+    counterIT = 0
+    counterDE = 0
+    for it_term, (itStatus, itStatusBistro) in termIT_dict_new.items():
+        if itStatus == "normato Alto Adige":
+            counterIT += 1
+    for de_term, (spr, deStatus, deStatusBistro) in termDE_dict.items():
+        if deStatus == "Südtirol genormt":
+            counterDE += 1
+    if counterDE == 0 and counterIT != 0:
+        #print("Mismatch between number of IT and AA standardised tags in entry.")
+        print(ID, termIT_dict_new, termDE_dict)
+        print()'''
+
 
 
 #  exporting full TB with tags as "TB_full.pkl"
@@ -167,6 +219,7 @@ with open(r"TB_m.pkl", "wb") as file:
 
 #print(tb_PhraseMatcher)
 #print(termBase)
+print("AA standardised terms: ", counter_standardised_AA)
 print("Entries discarded (South Tyrol term missing): ", counter_noAA)
 #print(termbase_out)
 
