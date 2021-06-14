@@ -2,6 +2,9 @@
 LexTerm
 
 Fine-grained automatic evaluation of legal terminology in MT output
+
+
+todo: perché non conta nel conteggio Wrong anche NST-S e NST-NS?!
 """
 from spacy import load as spacy_load
 from spacy.lang.it import Italian
@@ -22,7 +25,7 @@ import pickle
 termListMatchRef = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_m_lemmatised.pkl"  # termlist with AA lemmatised terms only, for matching purposes
 termListMatchHyp = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full_lemmatised.pkl"
 termListEval = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full.pkl"  # full termbase with all variants and tags
-testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+base+base_lemma.txt"
+testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+hyp3+hyp3_lemma.txt"
 output = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+hyp3+hyp3_lemma.EXPERIMENT_09.06.2021_with reference.txt"
 
 
@@ -102,8 +105,6 @@ def split_compounds(sent, thr, lemma=True):
     split_text = " ".join(split_text)  # sentence as string
     split_doc = nlp_de.make_doc(split_text)
     return split_doc
-
-
 
 
 
@@ -234,7 +235,6 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
                     start = span.start
                     end = span.end
                     match_id = span.label
-                    #concept_id = nlp_it.vocab.strings[match_id]
                     matched_after_split.append((id_terms[concept_id], src, ref))
 
         # hereafter, matches_de is/are the German match(es) in the reference sentence from either the first search
@@ -386,8 +386,11 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         CW = "C"
 
         #  assigning W tag (wrong) to terms with NST-S and NST-N status tags
-        if "NST" in tag:
+        if tag == "NST-S" or tag == "NST-NS":
             CW = "W"
+            print("debug")
+            print((id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id, id_terms[concept_id],
+                           str(matched_term_it), str(matched_term_de_or), CW, "|".join(spr), tag))
 
         #  removed, as ANS_C is no more annotated; ANS tag is already there
         """
@@ -413,7 +416,7 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         """it, de = id_terms[concept_id]
         concept_terms = ", ".join(it) + " = " + ", ".join(de)"""
         annotated_tuple = (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id, id_terms[concept_id],
-                           str(matched_term_it), str(matched_term_de_or), "C", "|".join(spr), tag)
+                           str(matched_term_it), str(matched_term_de_or), CW, "|".join(spr), tag)
         annotated_data.append(annotated_tuple)
 
         matcher_de.remove(concept_id)
