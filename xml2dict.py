@@ -41,6 +41,9 @@ termBase = {}
 #  counters for stats about the tb used for evaluation
 counter_noAA = 0
 counter_standardised_AA = 0
+counter_italian_terms = 0
+counter_AA_terms = 0
+counter_german_terms = 0
 
 
 for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept in the TB
@@ -71,6 +74,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
                 pass
 
         termIT_dict[termIT_text] = (statusTermine, statusBistroITA)
+
 
     termDE_dict = {}
     for termGrp in languageGrpDE.findall("termGrp"):
@@ -134,6 +138,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
             elif "Südtirol" not in spr:                        # terms from other legal systems
                 deStatus = "NST-NS"                                 # assign NST-NS tag
             termDE_dict_new[de_term] = (spr, deStatus, deStatusBistro)
+
     """
     termIT_dict_new = {}
     # adding missing tags to Italian standardised terms :
@@ -173,6 +178,14 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
     #termBase_test[ID] = (termIT_dict, termDE_dict)  todo: for testing purposes
 
 
+#  counting Italian and German terms
+for id, (it, de) in termBase.items():
+    for it_term in it.items():
+        counter_italian_terms += 1
+    for de_term in de.items():
+        counter_german_terms += 1
+
+
 
 '''# todo: remove after testing
 #  checking which entries have a mismatch btw IT standardised tags and AA standardised tags
@@ -208,6 +221,7 @@ for id, (italian, german) in termBase.items():
     for de_term, (spr, deStatus, deStatusBistro) in german.items():
         if "Südtirol" in spr:
             de_terms.append(de_term)        # appending only South Tyrol terms
+            counter_AA_terms += 1
     TB_PhraseMatcher[id] = (it_terms, de_terms)
 
 
@@ -219,7 +233,12 @@ with open(r"TB_m.pkl", "wb") as file:
 
 #print(tb_PhraseMatcher)
 #print(termBase)
-print("AA standardised terms: ", counter_standardised_AA)
+#print("AA standardised terms: ", counter_standardised_AA)
+print("Total entries in TB: ", len(termBase))
+print("Total Italian terms in TB: ", counter_italian_terms)
+print("Total South Tyrolean German terms in TB: ", counter_AA_terms)
+print("Total German terms in TB: ", counter_german_terms)
+print("Total terms in TB: ", counter_italian_terms + counter_german_terms)
 print("Entries discarded (South Tyrol term missing): ", counter_noAA)
 #print(termbase_out)
 
