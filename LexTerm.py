@@ -25,7 +25,7 @@ import pickle
 termListMatchRef = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_m_lemmatised.pkl"  # termlist with AA lemmatised terms only, for matching purposes
 termListMatchHyp = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full_lemmatised.pkl"
 termListEval = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full.pkl"  # full termbase with all variants and tags
-testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+hyp3+hyp3_lemma.txt"
+testSet = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+base+base_lemma.txt"
 output = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\testset+reference_2000_1 - detokenized+hyp3+hyp3_lemma.EXPERIMENT_09.06.2021_with reference.txt"
 
 
@@ -310,12 +310,27 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
             matches_de = filter_spans(matches_de)  # filtering overlapping matches (greedy)
 
             if not matches_de:
-                # if still no matches... append to annotated data as wrong/omitted, 1. NEO: Non-equivalent term/omitted
+                # if still no matches... append to annotated data as wrong/omitted, NEO: Non-equivalent term/omitted.
+                # to assign NEO-S and NEO-NS, check Termstatus tags of German terms in entry
                 # (sentenceID, src, ref, hyp, src_l, ref_l, hyp_l, conceptID,
                 # terminology_entry, src_term, hyp_term, C/W, legal_system, tag)
+
+                German_tags = set()    # set of Termstatus tags in German terms of the entry
+                itTerms, deTerms = referenceTB[concept_id]  # getting German terms from full termbase using ID
+                for deTerm, (spr, status, statusOLD) in deTerms.items():
+                    German_tags.add(status)
+
+                #  assigning NEO-S and NEO-NS according to the Termstatus tags of the German terms in the entry
+                #  If the entry contains German standardised/recommended terms, assign NEO-S tag
+                #  (non-equivalent/omitted term given a standardised/recommended German term),
+                #  else: assign NEO-NS (non-equivalent/omitted term given a standardised/recommended German term).
+                if "CS" in German_tags:    # if standardised/recommended German terms in entry
+                    tag = "NEO-S"
+                else:                      # if no standardised/recommended German terms in entry
+                    tag = "NEO-NS"
+
                 annotated_tuple = (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id,
-                                   id_terms[concept_id], str(matched_term_it), "NA", "W", "NA", "NEO")
-                                    # "NA" because no term was found in hypothesis
+                                   id_terms[concept_id], str(matched_term_it), "NA", "W", "NA", tag)
                 annotated_data.append(annotated_tuple)
 
         # hereafter, matches_de is/are the German match(es) in the hypothesis sentence from either the first search
@@ -454,7 +469,8 @@ annotated_data.sort(key=lambda x: x[0])
 total = len(annotated_data)
 counter_correct = 0
 counter_wrong = 0
-counter_NEO = 0
+counter_NEO_S = 0
+counter_NEO_NS = 0
 counter_NST_S = 0
 counter_NST_NS = 0
 counter_OLD = 0
@@ -468,8 +484,10 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id, concept_ter
         counter_wrong += 1
     elif CW == "C":
         counter_correct += 1
-    if tag == "NEO":
-        counter_NEO += 1
+    if tag == "NEO-S":
+        counter_NEO_S += 1
+    if tag == "NEO-NS":
+        counter_NEO_NS += 1
     elif tag == "NST-S":
         counter_NST_S += 1
     elif tag == "NST-NS":
@@ -502,9 +520,12 @@ print("\tCorrect non-standardised/non-recommended terms: ", counter_CNS)
 print("\tAcceptable variant terms given a standardised/recommended term: ", counter_ANS)
 print("_______________________________________________________________________________________________________________")
 print("Wrong/omitted terms: ", counter_wrong)
-print("\tNon-equivalent/omitted terms: ", counter_NEO)
-print("\tNon-South-Tyrol-specific terms (given a standardised or recommended term): ", counter_NST_S)
-print("\tNon-South-Tyrol-specific terms (without a standardised or recommended term): ", counter_NST_NS)
+print("\tNon-equivalent/omitted terms: ", counter_NEO_S + counter_NEO_NS)
+print("\t\tNon-equivalent/omitted terms (given a standardised or recommended term): ", counter_NEO_S)
+print("\t\tNon-equivalent/omitted terms (without a standardised or recommended term): ", counter_NEO_NS)
+print("\tNon-South-Tyrol-specific terms: ", counter_NST_S + counter_NST_NS)
+print("\t\tNon-South-Tyrol-specific terms (given a standardised or recommended term): ", counter_NST_S)
+print("\t\tNon-South-Tyrol-specific terms (without a standardised or recommended term): ", counter_NST_NS)
 print("\tOutdated terms: ", counter_OLD)
 print("_______________________________________________________________________________________________________________")
 print("LexTermEval score: ", (counter_correct / total) * 100)
