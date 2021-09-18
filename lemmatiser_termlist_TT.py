@@ -1,11 +1,11 @@
 '''
-Lemmatiser for term list (id-italian terms-german terms)
+Lemmatiser for term list (id-italian terms-german terms) => TB_full.pkl
 '''
 import treetaggerwrapper
 import pickle
 
-input = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full.pkl"
-output_lemmatised = r"C:\Users\anton\Dropbox\Eurac_tesi\LexTermEval\TB_full_lemmatised.pkl"
+input = r"...\TB_full.pkl"
+output_lemmatised = r"...\TB_full_lemmatised.pkl"
 
 tagger_it = treetaggerwrapper.TreeTagger(TAGLANG="it")
 tagger_de = treetaggerwrapper.TreeTagger(TAGLANG="de")
