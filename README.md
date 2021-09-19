@@ -14,7 +14,7 @@ Given a test set of source-reference sentence pairs, respective MT hypothesis se
   - lemmatise converted termbase data structures (`lemmatiser_termlist_TT.py`)
 - Dataset pre-processing
   - lemmatise source-sentence-hypothesis sentences (`lemmatisation_TreeTagger.py`)
-  - tokenise/detokenise original source-sentence-hypothesis sentences and assemble testset for terminology evaluation (`tok_detok.py`)
+  - tokenize original source-sentence-hypothesis sentences and assemble testset for terminology evaluation (`tokenize.py`)
 - Terminology evaluation
   - `LexTermEval.py`
 - Evaluate LexTermEval precision
