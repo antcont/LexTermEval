@@ -6,18 +6,16 @@ in order to allow retrieving matched terms between non-lemmatised and lemmatised
 The script tokenizes and detokenizes the non-lemmatised sentences and creates the final test set file
 id - src - ref - hyp - src_lemma - ref_lemma - hyp_lemma
 
-
-
 '''
 import treetaggerwrapper
 
-src_totokenize = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_source_2000.txt"
-ref_totokenize = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_reference_2000.txt"
-hyp_totokenize = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_translated_2000_custom4a+termini.txt"
-src_lemma = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_source_2000_lemmatised.txt"
-ref_lemma = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_reference_2000_lemmatised.txt"
-hyp_lemma = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_translated_2000_custom4a+termini_lemmatised.txt"
-output_testset = r"C:\Users\anton\Documents\Documenti importanti\SSLMIT FORLI M.A. SPECIALIZED TRANSLATION 2019-2021\tesi\Evaluation (Automatic + Manual)\Esperimento definitivo tesi\NEW_testSet_custom4a+terminology_LexTermEval.txt"
+src_totokenize = r"path\to\original\source\test-set"
+ref_totokenize = r"path\to\original\reference\set"
+hyp_totokenize = r"path\to\original\reference\set"
+src_lemma = r"path\to\lemmatised\source\test-set"
+ref_lemma = r"path\to\lemmatised\reference\set"
+hyp_lemma = r"path\to\lemmatised\reference\set"
+output_testset = r"path\to\output\testset\for\LexTermEval"
 
 #  instantiating taggers for each language
 tagger_it = treetaggerwrapper.TreeTagger(TAGLANG="it")
@@ -83,37 +81,7 @@ for i in range(len(src_t)):
     row = "%s\t%s\t%s\t%s\t%s\t%s\t%s" % (i+1, detok_src[i], detok_ref[i], detok_hyp[i], src_l[i], ref_l[i],
                                           hyp_l[i])
     testset_out.append(row)
-    print(row)
-
-
-
-
-'''with open(input_lemmatised, "r", encoding="utf-8") as x:
-    textLemma =x.read().splitlines()
-
-src = []
-src_lemma = []
-ref = []
-ref_lemma = []
-
-for line in textLines:
-    (src_, ref_) = line.split("\t")
-    src.append(tokenize_detokenize(src_, "it"))
-    ref.append(tokenize_detokenize(ref_, "de"))
-
-for line in textLemma:
-    (srcL, refL) = line.split("\t")
-    src_lemma.append(srcL)
-    ref_lemma.append(refL)
-
-
-
-output_list = []
-for i in range(len(src)):
-    output_list.append("%s\t%s\t%s\t%s\t%s" % (i, src[i], ref[i], src_lemma[i], ref_lemma[i]))
-    print("%s\t%s\t%s\t%s\t%s" % (i, src[i], ref[i], src_lemma[i], ref_lemma[i]))
-
-'''
+    #print(row)
 
 
 with open(output_testset, "w", encoding="utf-8") as out:
