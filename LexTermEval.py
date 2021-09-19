@@ -3,7 +3,7 @@ LexTermEval
 Fine-grained automatic evaluation of legal terminology in MT output
 
 The expected test set file is a tab-separated file with:
-sentence_id, source, reference, hypothesis, lemmatised_source, lemmatised_reference, lemmatised_hypothesis
+sentence_id, source(detokenised), reference(detokenised), hypothesis(detokenised), lemmatised_source, lemmatised_reference, lemmatised_hypothesis
 
 """
 from spacy import load as spacy_load
