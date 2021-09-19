@@ -3,7 +3,7 @@ LexTermEval
 Fine-grained automatic evaluation of legal terminology in MT output
 
 The expected test set file is a tab-separated file with:
-sentence_id, source, reference, hypothesis, lemmatised_source, lemmatised_reference, lemmatised_hypothesis)
+sentence_id, source, reference, hypothesis, lemmatised_source, lemmatised_reference, lemmatised_hypothesis
 
 """
 from spacy import load as spacy_load
@@ -13,16 +13,14 @@ from spacy.matcher import PhraseMatcher
 from spacy.util import filter_spans
 from charsplit import Splitter
 import treetaggerwrapper
-from Levenshtein import distance  # needed for coupling matched term - term in full termbase.
-# compute it for each German term in the termbase ->   edit_distance = distance(matched_term, termbase term)
-# then sort it from the lowest Levenshtein edit distance and pick the one with the lowest score
+from Levenshtein import distance
 import operator
 import csv
 from collections import Counter
 import pickle
 from hlepor import single_hlepor_score, hlepor_score
 
-#  (temporary) filepaths before adopting CLI
+#  set filepaths
 termListMatchRef = r"path\to\TB_m_lemmatised.pkl"  # termlist with AA lemmatised terms only, for matching purposes
 termListMatchHyp = r"path\to\TB_full_lemmatised.pkl"
 termListEval = r"path\to\TB_full.pkl"  # full termbase with all variants and tags
@@ -31,7 +29,7 @@ output = r"path\for\output\tsv\file"
 
 
 #  instantiating compound splitter and TreeTagger
-splitter = Splitter()   # NB:
+splitter = Splitter() 
 tagger = treetaggerwrapper.TreeTagger(TAGLANG="de")
 
 #  (black)list of prepositions and adverbs to avoid compound splitter to split preposition+noun
@@ -81,7 +79,7 @@ def check_overlap(matches_de, spanSet, n):
 
 def split_compounds(sent, thr, lemma=True):
     """
-    Compound splitter for German sentences.
+    Compound splitter for German sentences (https://github.com/dtuggener/CharSplit)
     It splits compounds according to a given threshold (thr)
     A lower threshold (0.5/0.6) allows for higher recall without influencing precision (we are looking for only the few
     German terms corresponding to the entry of the Italian matched term, therefore a risk of introducing noise
@@ -318,15 +316,6 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
             #  the split, lemmatised version, in order to retrieve the matched term using spans. (SEE ABOVE)
             doc_hyp_or = doc_hyp
 
-
-            #TODO: CHECK VARIABLES ABOVE (MODIFIED); THE FOLLOWING IS THE PRECEDING VERSION.
-            # Edit: should be okay, remove if confirmed.
-            """if not matches_de:
-                # if no match is found in the German sentence, I retry after splitting compounds
-                doc_de = split_compounds(doc_de, 0.3, True) # splitting compounds and overwriting existing non-split doc_de
-                print(doc_de)
-                doc_de_or = doc_de"""
-
             # now retrying to match on German hypothesis sentence with split compounds
             matches_de = matcher_de(doc_hyp, as_spans=True)  # checking for DE term matches in German hyp sentence
             matches_de = filter_spans(matches_de)  # filtering overlapping matches (greedy)
@@ -434,21 +423,7 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         #  assigning W tag (wrong) to terms with NST-S and NST-N status tags
         if tag == "NST-S" or tag == "NST-NS":
             CW = "W"
-            #print("debug")
-            #print((id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id, id_terms[concept_id], str(matched_term_it), str(matched_term_de_or), CW, "|".join(spr), tag))
-
-        #  removed, as ANS_C is no more annotated; ANS tag is already there
-        """
-        #  handling variants of standardised terms (according to status of Italian term)
-        if status_de == "ANS_C":
-            if status_it == "normato Alto Adige":
-                # if matched term is not standardised (but there is a standardised German term
-                # in the entry (ANS_C)), and the Italian matched term is standardised
-                # assign ANS (acceptable term given a standardised/recommended term)
-                tag = "ANS"
-            else:  # if Italian term is NOT standardised
-                tag = "CNS"   # correct non-standardised term"""
-
+            
         #  handling terms with "OLD" tag
         if old_de == "OLD" and spr == "Südtirol":  # defensive; all OLD terms should already be from South Tyrol
             if old_it != "OLD":  # if German term is OLD and Italian was not
@@ -472,16 +447,16 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
         # removing current terminology patterns from German PhraseMatcher for next iterations
         # should errors be raised, re-instantiate an empty matcher_de here (as done above)
 
-# print(identified_terms)  # todo (later if needed): need to convert to a dict to do counting with Counter
-print(matched_after_split)
-print(len(matched_after_split))
+# print(identified_terms)  # todo: to convert to a dict to do counting with Counter
+#print(matched_after_split)
+#print(len(matched_after_split))
 
-# printing matches after compound splitting nicely (for testing purposes)
+'''# printing matches after compound splitting nicely (for testing purposes)
 for ((ITTERMS, DETERMS), ITSENT, DESENT) in matched_after_split:
     print(ITTERMS, "\t", DETERMS)
     print(ITSENT)
     print(DESENT)
-    print()
+    print()'''
 
 
 #  counting each tag to compute term accuracy score
