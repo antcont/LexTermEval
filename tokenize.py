@@ -1,9 +1,9 @@
 '''
-script for sentence tokenization and detokenization (using the TreeTagger)
+script for sentence tokenization using the TreeTagger
 this is needed in order to have all sentences of the test set (non lemmatised vs lemmatised) with the same tokenization
 in order to allow retrieving matched terms between non-lemmatised and lemmatised sentences using match span position
 
-The script tokenizes and detokenizes the non-lemmatised sentences and creates the final test set file
+The script tokenizes the non-lemmatised sentences and creates the final test set file
 id - src - ref - hyp - src_lemma - ref_lemma - hyp_lemma
 
 '''
@@ -22,7 +22,7 @@ tagger_it = treetaggerwrapper.TreeTagger(TAGLANG="it")
 tagger_de = treetaggerwrapper.TreeTagger(TAGLANG="de")
 
 
-def tokenize_detokenize(text, lang):
+def tokenize(text, lang):
     if lang == "it":
         tagger = tagger_it
     elif lang == "de":
@@ -39,7 +39,7 @@ def tokenize_detokenize(text, lang):
     return " ".join(tokenized_list)
 
 
-#  data to tokenize/detokenize
+#  data to tokenize
 with open(src_totokenize, "r", encoding="utf-8") as src_tok:
     src_t = src_tok.read().splitlines()
 with open(ref_totokenize, "r", encoding="utf-8") as ref_tok:
@@ -56,21 +56,21 @@ with open(hyp_lemma, "r", encoding="utf-8") as hyp_lemma:
     hyp_l = hyp_lemma.read().splitlines()
 
 
-#  tokenizing / detokenizing
-detok_src = []
+#  tokenizing
+tok_src = []
 for line in src_t:
-    detok_src.append(tokenize_detokenize(line, "it"))
+    tok_src.append(tokenize(line, "it"))
 
-detok_ref = []
+tok_ref = []
 for line in ref_t:
-    detok_ref.append(tokenize_detokenize(line, "de"))
+    tok_ref.append(tokenize(line, "de"))
 
-detok_hyp = []
+tok_hyp = []
 for line in hyp_t:
-    detok_hyp.append(tokenize_detokenize(line, "de"))
+    tok_hyp.append(tokenize(line, "de"))
 
 #  check lengths
-if not len(src_l) == len(ref_l) == len(hyp_l) == len(detok_src) == len(detok_ref) == len(detok_hyp):
+if not len(src_l) == len(ref_l) == len(hyp_l) == len(tok_src) == len(tok_ref) == len(tok_hyp):
     print("An error occurred. Different sentence length between source and reference.")
     exit()
 
@@ -78,7 +78,7 @@ if not len(src_l) == len(ref_l) == len(hyp_l) == len(detok_src) == len(detok_ref
 #  writing test set output file
 testset_out = []
 for i in range(len(src_t)):
-    row = "%s\t%s\t%s\t%s\t%s\t%s\t%s" % (i+1, detok_src[i], detok_ref[i], detok_hyp[i], src_l[i], ref_l[i],
+    row = "%s\t%s\t%s\t%s\t%s\t%s\t%s" % (i+1, tok_src[i], tok_ref[i], tok_hyp[i], src_l[i], ref_l[i],
                                           hyp_l[i])
     testset_out.append(row)
     #print(row)
