@@ -8,6 +8,6 @@ Given a test set of source-reference sentence pairs, respective MT hypothesis se
 - Dataset pre-processing
   - pre-processing the dataset and creating final testset file (`create-testset.py`)
 - Terminology evaluation
-  - fine-grained automatic evaluation of legal terminology in MT output `LexTermEval.py`
+  - fine-grained automatic evaluation of legal terminology in MT output (`LexTermEval.py`)
 - Evaluating LexTermEval precision
-  - creating a tab-separated file for manual evaluation of LexTermEval precision `precision_evaluation.py`
+  - creating a tab-separated file for manual evaluation of LexTermEval precision (`precision_evaluation.py`)
