@@ -1,20 +1,18 @@
 '''
-script for sentence tokenization using the TreeTagger
+Creating the test set for LexTermEval.py.
+Source-reference-hypothesis sentences are kept both in lemmatised (for matching) and tokenized form.
 this is needed in order to have all sentences of the test set (non lemmatised vs lemmatised) with the same tokenization
 in order to allow retrieving matched terms between non-lemmatised and lemmatised sentences using match span position
 
-The script tokenizes the non-lemmatised sentences and creates the final test set file
-id - src - ref - hyp - src_lemma - ref_lemma - hyp_lemma
+Output: tab-separated test set file -->
+id - src_tokenised - ref_tokenised - hyp_tokenised - src_lemma - ref_lemma - hyp_lemma
 
 '''
 import treetaggerwrapper
 
-src_totokenize = r"path\to\original\source\test-set"
-ref_totokenize = r"path\to\original\reference\set"
-hyp_totokenize = r"path\to\original\reference\set"
-src_lemma = r"path\to\lemmatised\source\test-set"
-ref_lemma = r"path\to\lemmatised\reference\set"
-hyp_lemma = r"path\to\lemmatised\reference\set"
+src = r"path\to\original\source\test-set"
+ref = r"path\to\original\reference\set"
+hyp = r"path\to\original\reference\set"
 output_testset = r"path\to\output\testset\for\LexTermEval"
 
 #  instantiating taggers for each language
@@ -39,22 +37,36 @@ def tokenize(text, lang):
     return " ".join(tokenized_list)
 
 
-#  data to tokenize
-with open(src_totokenize, "r", encoding="utf-8") as src_tok:
-    src_t = src_tok.read().splitlines()
-with open(ref_totokenize, "r", encoding="utf-8") as ref_tok:
-    ref_t = ref_tok.read().splitlines()
-with open(hyp_totokenize, "r", encoding="utf-8") as hyp_tok:
-    hyp_t = hyp_tok.read().splitlines()
+def lemmatise(text, lang):
+    if lang == "it":
+        tagger = tagger_it
+    elif lang == "de":
+        tagger = tagger_de
+    tags = tagger.tag_text(text)
+    mytags = treetaggerwrapper.make_tags(tags, exclude_nottags=True)
+    lemma_list = []
+    for tag in mytags:
+        try:
+            lemma_list.append(tag.lemma)
+        except AttributeError:
+            # if NoTag, ignore
+            continue
+    return " ".join(lemma_list)
 
-#  lemmmatised data to append to test set
-with open(src_lemma, "r", encoding="utf-8") as src_lemma:
-    src_l = src_lemma.read().splitlines()
-with open(ref_lemma, "r", encoding="utf-8") as ref_lemma:
-    ref_l = ref_lemma.read().splitlines()
-with open(hyp_lemma, "r", encoding="utf-8") as hyp_lemma:
-    hyp_l = hyp_lemma.read().splitlines()
 
+#  open data to tokenize and lemmatize
+with open(src, "r", encoding="utf-8") as src_:
+    src_t = src_.read().splitlines()
+with open(ref, "r", encoding="utf-8") as ref_:
+    ref_t = ref_.read().splitlines()
+with open(hyp, "r", encoding="utf-8") as hyp_:
+    hyp_t = hyp_.read().splitlines()
+
+
+#  check lengths
+if not len(src_t) == len(ref_t) == len(hyp_t):
+    print("An error occurred. Different sentence length between source and reference.")
+    exit()
 
 #  tokenizing
 tok_src = []
@@ -69,10 +81,20 @@ tok_hyp = []
 for line in hyp_t:
     tok_hyp.append(tokenize(line, "de"))
 
-#  check lengths
-if not len(src_l) == len(ref_l) == len(hyp_l) == len(tok_src) == len(tok_ref) == len(tok_hyp):
-    print("An error occurred. Different sentence length between source and reference.")
-    exit()
+
+# lemmatising
+src_l = []
+for line in src_t:
+    src_l.append(lemmatise(line, "it"))
+
+ref_l = []
+for line in ref_t:
+    ref_l.append(lemmatise(line, "de"))
+
+hyp_l = []
+for line in hyp_t:
+    hyp_l.append(lemmatise(line, "de"))
+
 
 
 #  writing test set output file
