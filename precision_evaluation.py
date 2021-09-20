@@ -1,11 +1,12 @@
 '''
 TSV file for evaluation of LexTermEval precision on 100 random sentences
+input is the TSV report file from LexTermEval.py
 '''
 
 import pandas as pd
 
 path = r"path\to\LexTermEval.py\tsv\report\file"
-out = r""
+out = r"path\to\output\tsv\file"
 
 
 
