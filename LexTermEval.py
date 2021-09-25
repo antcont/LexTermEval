@@ -152,7 +152,7 @@ nlp_it = Italian()
 matcher_it = PhraseMatcher(nlp_it.vocab, attr="LOWER")
 matcher_de = PhraseMatcher(nlp_de.vocab, attr="LOWER")
 
-print("Start searching for matches...\n")
+print("Starting term matching and evaluation...\n")
 
 #  for testing purposes (todo: remove after testing?)
 identified_terms = []
@@ -172,13 +172,18 @@ for id, (it, de) in id_terms.items():
     matcher_it.add(str(id), pattern_it)  # adding all Italian terms to PhraseMatcher, with respective conceptID
 
 #  starting automatic terminology evaluation
+counter = 0
+lenTestSet = len(test_)
+
 for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating over each sentence-tuple in the test-set
+
+    counter += 1
 
     # for each sentence in test set, creating a set of tuples (matched_term, span)
     # to avoid duplicate annotations in sentences with more than one term from the same concept
     match_spans_de_ref = set()
     match_spans_de_hyp = set()
-    print("Next sentence pair...")
+    #print("Next sentence pair...")
 
     doc_it = nlp_it.make_doc(src_lemma)  # Str to Doc (lemmatised)
     doc_it_or = nlp_it.make_doc(src)  # Str to Doc (original); used to retrieve the original form of the matched term
@@ -274,7 +279,7 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
                     match_spans_de_ref.add((str(matched_term_de), span_de))
                     break
 
-        print("[MATCH] German equivalent term found in reference.")
+        #print("[MATCH] German equivalent term found in reference.")
 
         concept_id = nlp_it.vocab.strings[match_id]  # getting the concept ID
 
@@ -347,11 +352,14 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
                 annotated_tuple = (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma, concept_id,
                                    id_terms_full[concept_id], str(matched_term_it), "NA", "W", "NA", tag, hlepor)
                 annotated_data.append(annotated_tuple)
+
+                print("\r", "%s/%s test set sentences evaluated." % (counter, lenTestSet), end="")
+
                 #print("[NO MATCH] No German equivalent found in hypothesis.")
                 #print(matched_term_it)
                 #print(doc_de)
                 #print(terms_matcher)
-                print()
+                #print()
 
         # hereafter, matches_de is/are the German match(es) in the hypothesis sentence from either the first search
         # or the search after compound splitting
@@ -443,6 +451,8 @@ for (id, src, ref, hyp, src_lemma, ref_lemma, hyp_lemma) in test_:  # iterating 
                            str(matched_term_it), str(matched_term_de_or), CW, "|".join(spr), tag, hlepor)
         annotated_data.append(annotated_tuple)
 
+        print("\r", "%s/%s test set sentences evaluated." % (counter, lenTestSet), end="")
+
         matcher_de.remove(concept_id)
         # removing current terminology patterns from German PhraseMatcher for next iterations
         # should errors be raised, re-instantiate an empty matcher_de here (as done above)
@@ -458,6 +468,7 @@ for ((ITTERMS, DETERMS), ITSENT, DESENT) in matched_after_split:
     print(DESENT)
     print()'''
 
+print("Evaluation completed. Exporting tab-separated annotation file...")
 
 #  counting each tag to compute term accuracy score
 total = len(annotated_data)
