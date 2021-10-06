@@ -149,7 +149,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
             if "Südtirol" in spr and deStatus == "Südtirol genormt":           # South Tyrol standardised terms
                 deStatus = "CS"                                     # overwrite "Südtirol genormt" with CS tag
             elif "Südtirol" in spr and deStatus == "NA":           # South Tyrol variants of standardised terms
-                deStatus = "ANS"                                    # assign ANS tag
+                deStatus = "CV"                                    # assign CV tag
             elif "Südtirol" not in spr:                            # terms from other legal systems
                 deStatus = "NST-S"                                  # assing NST-S tag
             termDE_dict_new[de_term] = (spr, deStatus, deStatusBistro)
@@ -159,7 +159,7 @@ for conceptGrp in root.iter("conceptGrp"):         # iterating over each concept
             if "Südtirol" in spr and deStatus == "in Südtirol empfohlen":       # South Tyrol recommended terms
                 deStatus = "CS"                                     # overwrite "in Südtirol empfohlen" with CS tag
             elif "Südtirol" in spr and deStatus == "NA":         # South Tyrol variants of recommended terms
-                deStatus = "ANS"                                    # assign ANS tag
+                deStatus = "CV"                                    # assign CV tag
             elif "Südtirol" not in spr:                        # terms from other legal systems
                 deStatus = "NST-S"                                  # assign NST-S tag
             termDE_dict_new[de_term] = (spr, deStatus, deStatusBistro)
